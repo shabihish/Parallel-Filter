@@ -16,9 +16,9 @@ public:
 
     Pixel &operator=(const Pixel &pixel);
 
-    Pixel &operator+(const Pixel &pixel);
+    Pixel operator+(const Pixel &pixel);
 
-    Pixel &operator/(const int dividend);
+    Pixel operator/(const float dividend);
     };
 
 vector<vector<Pixel>> applySmoothing(vector<vector<Pixel>> image);

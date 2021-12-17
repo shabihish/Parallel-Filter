@@ -69,67 +69,87 @@ bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, 
 }
 
 vector<vector<Pixel>> getPixlesFromBMP24(int end, int rows, int cols, char *fileReadBuffer) {
-    int count = 0;
+    int count = 1;
     int extra = cols % 4;
 
-    auto image = vector<vector<Pixel>>(rows);
+    int size = rows * cols;
+    Pixel *image = static_cast<Pixel *>(calloc(sizeof(Pixel), size));
     for (int i = 0; i < rows; i++) {
         count += extra;
-        image.emplace_back(std::vector<Pixel>(cols));
-        for (int j = 0; j < cols; j++) {
+        for (int j = cols - 1; j >= 0; j--) {
             Pixel p;
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
                         // fileReadBuffer[end - count] is the red value
-                        p.r = fileReadBuffer[end - count];
+                        image[size - count / 3 - 1].r = fileReadBuffer[end - count];
 //                        cout << (int) fileReadBuffer[count] << " ";
                         break;
                     case 1:
                         // fileReadBuffer[end - count] is the green value
-                        p.g = fileReadBuffer[end - count];
+                        image[size - count / 3 - 1].g = fileReadBuffer[end - count];
 //                        cout << (int) fileReadBuffer[count] << " ";
                         break;
                     case 2:
                         // fileReadBuffer[end - count] is the blue value
-                        p.b = fileReadBuffer[end - count];
+                        image[size - count / 3 - 1].b = fileReadBuffer[end - count];
 //                        cout << (int) fileReadBuffer[count] << endl;
                         break;
                         // go to the next position in the buffer
                 }
                 count++;
             }
-            image[i].emplace_back(p);
         }
     }
-    return image;
+
+    count = size - 1;
+    vector<vector<Pixel>> img_vec(rows);
+    for (int i = 0; i < rows; i++) {
+        img_vec.emplace_back(vector<Pixel>(cols));
+        for (int j = 0; j < cols; j++) {
+            img_vec[i].emplace_back(image[count]);
+            count--;
+        }
+    }
+    free(image);
+    return img_vec;
 }
 
-void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferSize, vector<vector<Pixel>> image) {
+void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferSize, vector<vector<Pixel>> img_vec) {
     std::ofstream write(nameOfFileToCreate);
     if (!write) {
         cout << "Failed to write " << nameOfFileToCreate << endl;
         return;
     }
 
-    int count = 0;
+    int size = rows * cols;
+    auto *image = static_cast<Pixel *>(calloc(sizeof(Pixel), size));
+    int count = size - 1;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            image[count] = img_vec[i][j];
+            count--;
+        }
+    }
+
+    count = 1;
     int extra = cols % 4;
     for (int i = 0; i < rows; i++) {
         count += extra;
-        for (int j = 0; j < cols; j++) {
+        for (int j = cols - 1; j >= 0; j--) {
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
                         // write red value in fileBuffer[bufferSize - count]
-                        fileBuffer[count] = image[i][j].r;
+                        fileBuffer[bufferSize - count] = image[size - count / 3 - 1].r;
                         break;
                     case 1:
                         // write green value in fileBuffer[bufferSize - count]
-                        fileBuffer[count] = image[i][j].g;
+                        fileBuffer[bufferSize - count] = image[size - count / 3 - 1].g;
                         break;
                     case 2:
                         // write blue value in fileBuffer[bufferSize - count]
-                        fileBuffer[count] = image[i][j].b;
+                        fileBuffer[bufferSize - count] = image[size - count / 3 - 1].b;
                         break;
                         // go to the next position in the buffer
                 }
@@ -150,13 +170,13 @@ int main(int argc, char *argv[]) {
     }
 
     // read input file
-    vector<vector<Pixel>> image = getPixlesFromBMP24(bufferSize - 1, rows, cols, fileBuffer);
+    vector<vector<Pixel>> img_vec = getPixlesFromBMP24(bufferSize, rows, cols, fileBuffer);
 
     // apply filters
-//    image = applySmoothing(image);
+    img_vec = applySmoothing(img_vec);
     // write output file
 
-    writeOutBmp24(fileBuffer, "new.bmp", bufferSize, image);
+    writeOutBmp24(fileBuffer, "new.bmp", bufferSize, img_vec);
 
     return 0;
 }
