@@ -2,6 +2,7 @@
 #define CA3_FILTERS_HPP
 
 #include <vector>
+
 using namespace std;
 
 class Pixel {
@@ -19,8 +20,8 @@ public:
     Pixel operator+(const Pixel &pixel);
 
     Pixel operator/(const float dividend);
-    };
+};
 
-vector<vector<Pixel>> applySmoothing(vector<vector<Pixel>> image);
+vector<vector<Pixel>> applySmoothing(vector<vector<Pixel>> image, int rows, int cols);
 
 #endif

@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "filters.hpp"
 
 using namespace std;
@@ -38,12 +39,11 @@ Pixel Pixel::operator/(const float dividend) {
     return p;
 };
 
-vector<vector<Pixel>> applySmoothing(vector<vector<Pixel>> image) {
+vector<vector<Pixel>> applySmoothing(vector<vector<Pixel>> image, int rows, int cols) {
     vector<vector<Pixel>> new_image = image;
-    new_image[0][0].r +=1;
-    for (int i = 0; i < image.size(); i++) {
-        for (int j = 0; j < image[i].size(); j++) {
-            if (i == 0 || i == image.size() - 1 || j == 0 || j == image[i].size() - 1)
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (i == 0 || i == rows - 1 || j == 0 || j == cols - 1)
                 new_image[i][j].setToZero();
             else
                 new_image[i][j] =
