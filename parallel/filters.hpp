@@ -23,6 +23,8 @@ public:
 
     Pixel operator+(const Pixel &pixel);
 
+    Pixel &operator+=(const Pixel &pixel);
+
     Pixel operator/(const double dividend);
 
     Pixel operator*(const double b);
@@ -30,9 +32,10 @@ public:
 
 vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image, int rows, int cols);
 
-vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image, int rows, int cols);
+vector<vector<Pixel>>
+applySepiaFilter(vector<vector<Pixel>> image, int rows, int cols, Pixel &sum, bool row0Added, bool row1Added);
 
-vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image);
+vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image, Pixel mean);
 
 vector<vector<Pixel>> addCrossToImage(vector<vector<Pixel>> image);
 

@@ -81,9 +81,13 @@ public:
     int cols;
     char *buffer;
     vector<vector<Pixel>> *image;
+    Pixel *sum;
+    bool row0Added;
+    bool row1Added;
 
     ThreadingArgs(int start = 0, int chunkSize = 0, int bufferSize = 0, int rows = 0, int cols = 0,
-                  char *buffer = nullptr, vector<vector<Pixel>> *image = nullptr) {
+                  char *buffer = nullptr, vector<vector<Pixel>> *image = nullptr, Pixel *sum = nullptr,
+                  bool row0Added = false, bool row1Added = false) {
         this->start = start;
         this->chunkSize = chunkSize;
         this->bufferSize = bufferSize;
@@ -91,6 +95,9 @@ public:
         this->cols = cols;
         this->buffer = buffer;
         this->image = image;
+        this->sum = sum;
+        this->row0Added = row0Added;
+        this->row1Added = row1Added;
     }
 };
 
@@ -182,7 +189,7 @@ void *threadsFunc(ThreadingArgs *args) {
     getPixlesFromBMP24(args);
 
     *args->image = applySmoothingFilter(*args->image, args->rows, args->cols);
-    *args->image = applySepiaFilter(*args->image, args->rows, args->cols);
+    *args->image = applySepiaFilter(*args->image, args->rows, args->cols, *args->sum, args->row0Added, args->row1Added);
     return nullptr;
 }
 
@@ -228,25 +235,32 @@ int main(int argc, char *argv[]) {
     }
 
     vector<vector<Pixel>> images[numOfThreads];
+    Pixel sums[numOfThreads];
 
     int rc = 0;
     ThreadingArgs args[numOfThreads];
 
     long s = getTime();
     int chunkSize, start, rowSize;
+    bool row0Added, row1Added;
     for (int i = 0; i < numOfThreads; i++) {
+        row0Added = false;
+        row1Added = false;
         start = headerSize + basicChunkSizes * i;
         rowSize = basicRowSizes;
         if (i > 0) {
+            row0Added = true;
             start -= cols * 3;
             rowSize += 1;
         }
 
-        if (i < numOfThreads - 1)
+        if (i < numOfThreads - 1) {
+            row1Added = true;
             rowSize += 1;
+        }
 
         args[i] = ThreadingArgs(start, basicChunkSizes, bufferSize, rowSize, cols, fileBuffer,
-                                &images[i]);
+                                &images[i], &sums[i], row0Added, row1Added);
         rc = pthread_create(&threads[i], &attr, reinterpret_cast<void *(*)(void *)>(threadsFunc), &args[i]);
         if (rc) {
             cout << "Error:unable to create thread," << rc << endl;
@@ -255,6 +269,8 @@ int main(int argc, char *argv[]) {
     }
 
     vector<vector<Pixel>> image;
+
+    Pixel sum;
 
     void *status;
     pthread_attr_destroy(&attr);
@@ -272,9 +288,10 @@ int main(int argc, char *argv[]) {
         if (i < numOfThreads - 1)
             end -= 1;
         image.insert(image.end(), beginning, end);
+        sum += sums[i];
     }
 
-    image = applyOverallMeanFilter(image);
+    image = applyOverallMeanFilter(image, sum / (rows * cols));
     image = addCrossToImage(image);
 
     // write output file

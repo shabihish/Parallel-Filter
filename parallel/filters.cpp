@@ -48,6 +48,14 @@ Pixel Pixel::operator+(const Pixel &pixel) {
     return p;
 };
 
+Pixel &Pixel::operator+=(const Pixel &pixel) {
+    this->r += pixel.r;
+    this->g += pixel.g;
+    this->b += pixel.b;
+
+    return *this;
+};
+
 Pixel Pixel::operator/(const double dividend) {
     Pixel p;
     p.r = (int) (this->r / dividend);
@@ -82,28 +90,22 @@ vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image, int rows
     return new_image;
 }
 
-vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image, int rows, int cols) {
-    for (auto &i: image) {
-        for (auto &j: i) {
-            j.applySepia();
+vector<vector<Pixel>>
+applySepiaFilter(vector<vector<Pixel>> image, int rows, int cols, Pixel &sum, bool row0Added, bool row1Added) {
+    for (int i = 0; i < image.size(); i++) {
+        for (int j = 0; j < image[i].size(); j++) {
+            image[i][j].applySepia();
+            if (!(row0Added && i == 0) && !(row1Added && i == image.size() - 1))
+                sum += image[i][j];
         }
     }
     return image;
 }
 
-vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image) {
-    Pixel p;
-    p.setToZero();
+vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image, Pixel mean) {
     for (auto &i: image) {
         for (auto &j: i) {
-            p = p + j;
-        }
-    }
-    p = p / (double) (image.size() * image[0].size());
-
-    for (auto &i: image) {
-        for (auto &j: i) {
-            j = j * 0.4 + p * 0.6;
+            j = j * 0.4 + mean * 0.6;
         }
     }
     return image;
