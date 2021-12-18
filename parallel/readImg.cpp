@@ -215,20 +215,20 @@ int main(int argc, char *argv[]) {
     char *fileBuffer;
     int bufferSize, headerSize;
     char *fileName = argv[1];
-    if (!fillAndAllocate(fileBuffer, fileName, rows, cols, bufferSize, headerSize)) {
-        cout << "File read error" << endl;
-        return 1;
-    }
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    int numOfRuns = 5;
+    int numOfRuns = 3;
 
-    for (int numOfThreads = 1; numOfThreads < 1000; numOfThreads++) {
+    for (int numOfThreads = 1; numOfThreads < 201; numOfThreads++) {
         long runtime = 0;
-        for (int run = 1; run < numOfRuns; run++) {
+        for (int run = 0; run < numOfRuns; run++) {
+            if (!fillAndAllocate(fileBuffer, fileName, rows, cols, bufferSize, headerSize)) {
+                cout << "File read error" << endl;
+                return 1;
+            }
             int basicChunkSizes = (bufferSize - headerSize) / numOfThreads;
             if (basicChunkSizes % (rows * 3) != 0)
                 continue;
@@ -303,8 +303,8 @@ int main(int argc, char *argv[]) {
 
             // write output file
             writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, image);
-            runtime += (getTime() - s) / 5;
-            if (run == numOfRuns - 1)
+            runtime += (getTime() - s) / numOfRuns;
+            if (run == numOfRuns-1)
                 cout << "numOfThreads: " << numOfThreads << " mean time: " << runtime << "us" << endl;
         }
     }
