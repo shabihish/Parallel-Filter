@@ -15,13 +15,16 @@ public:
 
     void setToZero();
 
+    void applySepia();
+
     Pixel &operator=(const Pixel &pixel);
 
     Pixel operator+(const Pixel &pixel);
 
-    Pixel operator/(const float dividend);
+    Pixel operator/(const double dividend);
 };
 
-vector<vector<Pixel>> applySmoothing(vector<vector<Pixel>> image, int rows, int cols);
+vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image);
+vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image);
 
 #endif

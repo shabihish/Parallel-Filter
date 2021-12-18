@@ -85,15 +85,15 @@ vector<vector<Pixel>> getPixlesFromBMP24(int headerSize, int rows, int cols, cha
                 switch (k) {
                     case 0:
                         // fileReadBuffer[bufferSize - count] is the red value
-                        image[i][j].r = (unsigned char)fileReadBuffer[count];
+                        image[i][j].b = (unsigned char) fileReadBuffer[count];
                         break;
                     case 1:
                         // fileReadBuffer[bufferSize - count] is the green value
-                        image[i][j].g = (unsigned char)fileReadBuffer[count];
+                        image[i][j].g = (unsigned char) fileReadBuffer[count];
                         break;
                     case 2:
                         // fileReadBuffer[bufferSize - count] is the blue value
-                        image[i][j].b = (unsigned char)fileReadBuffer[count];
+                        image[i][j].r = (unsigned char) fileReadBuffer[count];
                         break;
                         // go to the next position in the buffer
                 }
@@ -102,19 +102,6 @@ vector<vector<Pixel>> getPixlesFromBMP24(int headerSize, int rows, int cols, cha
         }
     }
 
-    int max = -1000;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            Pixel p = image[i][j];
-            if (p.r > max)
-                max = p.r;
-            if (p.g > max)
-                max = p.g;
-            if (p.b > max)
-                max = p.b;
-        }
-    }
-    cout << "MAX: " << max << endl;
     return image;
 }
 
@@ -135,15 +122,15 @@ void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferS
                 switch (k) {
                     case 0:
                         // write red value in fileBuffer[bufferSize - count]
-                        fileBuffer[count] = (char)image[i][j].r;
+                        fileBuffer[count] = (char) (image[i][j].b);
                         break;
                     case 1:
                         // write green value in fileBuffer[bufferSize - count]
-                        fileBuffer[count] = (char)image[i][j].g;
+                        fileBuffer[count] = (char) (image[i][j].g);
                         break;
                     case 2:
                         // write blue value in fileBuffer[bufferSize - count]
-                        fileBuffer[count] = (char)image[i][j].b;
+                        fileBuffer[count] = (char) (image[i][j].r);
                         break;
                         // go to the next position in the buffer
                 }
@@ -167,9 +154,10 @@ int main(int argc, char *argv[]) {
     vector<vector<Pixel>> image = getPixlesFromBMP24(headerSize, rows, cols, fileBuffer);
 
     // apply filters
-    image = applySmoothing(image, rows, cols);
-    // write output file
+    image = applySmoothingFilter(image);
+    image = applySepiaFilter(image);
 
+    // write output file
     writeOutBmp24(fileBuffer, "new.bmp", bufferSize, headerSize, image);
 
     return 0;
