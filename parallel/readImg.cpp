@@ -64,7 +64,7 @@ bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, 
         rows = info_header->biHeight;
         cols = info_header->biWidth;
         bufferSize = file_header->bfSize;
-        headerSize = bufferSize - info_header->biSizeImage;
+        headerSize = bufferSize - rows * cols * 3;
         return 1;
     } else {
         cout << "File" << fileName << " doesn't exist!" << endl;
