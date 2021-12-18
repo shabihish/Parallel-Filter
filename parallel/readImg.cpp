@@ -4,6 +4,8 @@
 #include <vector>
 #include <sys/time.h>
 #include "filters.hpp"
+#include <pthread.h>
+#include <unistd.h>
 
 using std::cout;
 using std::endl;
@@ -40,11 +42,6 @@ typedef struct tagBITMAPINFOHEADER {
     DWORD biClrImportant;
 } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
 
-//struct timespec {
-//    time_t   tv_sec;        /* seconds */
-//    long     tv_nsec;       /* nanoseconds */
-//} ts;
-
 int rows;
 int cols;
 
@@ -75,40 +72,50 @@ bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, 
     }
 }
 
-vector<vector<Pixel>> getPixlesFromBMP24(int headerSize, int rows, int cols, char *fileReadBuffer) {
-    int count = headerSize;
-    int extra = cols % 4;
+typedef struct {
+    int start;
+    int chunkSize;
+    int bufferSize;
+    int rows;
+    int cols;
+    char *buffer;
+    vector<vector<Pixel>> &image;
+} threading_args;
 
-//    Pixel **image = static_cast<Pixel **>(calloc(sizeof(Pixel *), rows));
-    vector<vector<Pixel>> image(rows);
-    for (int i = 0; i < rows; i++) {
-        image.emplace_back(vector<Pixel>(cols));
-//         rowPixels(cols);
+void *getPixlesFromBMP24(threading_args *args) {
+    int count = args->start;
+    int extra = args->cols % 4;
+
+    args->image = vector<vector<Pixel>>(args->rows);
+    for (int i = 0; i < args->rows; i++) {
+        args->image.emplace_back(vector<Pixel>(args->cols));
         count += extra;
-        for (int j = 0; j < cols; j++) {
-            image[i].emplace_back(Pixel());
+        for (int j = 0; j < args->cols; j++) {
+            args->image[i].emplace_back(Pixel());
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
-                        // fileReadBuffer[bufferSize - count] is the red value
-                        image[i][j].b = (unsigned char) fileReadBuffer[count];
+                        // buffer[bufferSize - count] is the red value
+                        args->image[i][j].b = (unsigned char) args->buffer[count];
                         break;
                     case 1:
-                        // fileReadBuffer[bufferSize - count] is the green value
-                        image[i][j].g = (unsigned char) fileReadBuffer[count];
+                        // buffer[bufferSize - count] is the green value
+                        args->image[i][j].g = (unsigned char) args->buffer[count];
                         break;
                     case 2:
-                        // fileReadBuffer[bufferSize - count] is the blue value
-                        image[i][j].r = (unsigned char) fileReadBuffer[count];
+                        // buffer[bufferSize - count] is the blue value
+                        args->image[i][j].r = (unsigned char) args->buffer[count];
                         break;
                         // go to the next position in the buffer
                 }
                 count++;
+                if (count - args->start == args->chunkSize)
+                    return nullptr;
             }
         }
     }
 
-    return image;
+    return nullptr;
 }
 
 void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferSize, int headerSize,
@@ -127,15 +134,15 @@ void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferS
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
-                        // write red value in fileBuffer[bufferSize - count]
+                        // write red value in buffer[bufferSize - count]
                         fileBuffer[count] = (char) (image[i][j].b);
                         break;
                     case 1:
-                        // write green value in fileBuffer[bufferSize - count]
+                        // write green value in buffer[bufferSize - count]
                         fileBuffer[count] = (char) (image[i][j].g);
                         break;
                     case 2:
-                        // write blue value in fileBuffer[bufferSize - count]
+                        // write blue value in buffer[bufferSize - count]
                         fileBuffer[count] = (char) (image[i][j].r);
                         break;
                         // go to the next position in the buffer
@@ -154,6 +161,23 @@ uint64_t getTime() {
     return tv.tv_usec + tv.tv_sec * (uint64_t) 1000000;
 }
 
+pthread_t runThread(threading_args &args, pthread_attr_t &attr) {
+    // read input file
+    pthread_t thread;
+//    pthread_create(nullptr, nullptr, nullptr, nullptr);
+    pthread_create(&thread, &attr, reinterpret_cast<void *(*)(void *)>(getPixlesFromBMP24), &args);
+//    vector<vector<Pixel>> image = getPixlesFromBMP24(args.start, rows, cols, args.buffer);
+
+    void *status;
+    pthread_join(thread, &status);
+
+    args.image = applySmoothingFilter(args.image);
+    args.image = applySepiaFilter(args.image);
+//    args.image = applyOverallMeanFilter(args.image);
+//    args.image = addCrossToImage(args.image);
+    return thread;
+}
+
 int main(int argc, char *argv[]) {
     char *fileBuffer;
     int bufferSize, headerSize;
@@ -163,42 +187,17 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // read input file
-    uint64_t s1 = getTime();
-    vector<vector<Pixel>> image = getPixlesFromBMP24(headerSize, rows, cols, fileBuffer);
-    uint64_t t1 = getTime() - s1;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    // apply filters
-    uint64_t s2 = getTime();
-    image = applySmoothingFilter(image);
-    uint64_t t2 = getTime() - s2;
+    vector<vector<Pixel>> image;
+    threading_args args{headerSize, bufferSize - headerSize, bufferSize, rows, cols, fileBuffer, image};
+    pthread_t thread = runThread(args, attr);
 
-    uint64_t s3 = getTime();
-    image = applySepiaFilter(image);
-    uint64_t t3 = getTime() - s3;
 
-    uint64_t s4 = getTime();
-    image = applyOverallMeanFilter(image);
-    uint64_t t4 = getTime() - s4;
-
-    uint64_t s5 = getTime();
-    image = addCrossToImage(image);
-    uint64_t t5 = getTime() - s5;
 
     // write output file
-    uint64_t s6 = getTime();
-    writeOutBmp24(fileBuffer, "new1.bmp", bufferSize, headerSize, image);
-    uint64_t t6 = getTime() - s6;
-
-    double total = t1 + t2 + t3 + t4 + t5 + t6;
-    cout << "t1: " << t1 / total << endl;
-    cout << "t2: " << t2 / total << endl;
-    cout << "t3: " << t3 / total << endl;
-    cout << "t4: " << t4 / total << endl;
-    cout << "t5: " << t5 / total << endl;
-    cout << "t6: " << t6 / total << endl;
-
-    cout << "\ntotal: " << total << "us" << endl;
-
+    writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, args.image);
     return 0;
 }

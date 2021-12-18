@@ -90,15 +90,15 @@ vector<vector<Pixel>> getPixlesFromBMP24(int headerSize, int rows, int cols, cha
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
-                        // fileReadBuffer[bufferSize - count] is the red value
+                        // buffer[bufferSize - count] is the red value
                         image[i][j].b = (unsigned char) fileReadBuffer[count];
                         break;
                     case 1:
-                        // fileReadBuffer[bufferSize - count] is the green value
+                        // buffer[bufferSize - count] is the green value
                         image[i][j].g = (unsigned char) fileReadBuffer[count];
                         break;
                     case 2:
-                        // fileReadBuffer[bufferSize - count] is the blue value
+                        // buffer[bufferSize - count] is the blue value
                         image[i][j].r = (unsigned char) fileReadBuffer[count];
                         break;
                         // go to the next position in the buffer
@@ -127,15 +127,15 @@ void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferS
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
-                        // write red value in fileBuffer[bufferSize - count]
+                        // write red value in buffer[bufferSize - count]
                         fileBuffer[count] = (char) (image[i][j].b);
                         break;
                     case 1:
-                        // write green value in fileBuffer[bufferSize - count]
+                        // write green value in buffer[bufferSize - count]
                         fileBuffer[count] = (char) (image[i][j].g);
                         break;
                     case 2:
-                        // write blue value in fileBuffer[bufferSize - count]
+                        // write blue value in buffer[bufferSize - count]
                         fileBuffer[count] = (char) (image[i][j].r);
                         break;
                         // go to the next position in the buffer

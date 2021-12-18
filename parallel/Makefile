@@ -1,23 +1,8 @@
-#CC=g++ -g -std=c++11
-#CFLAGS=-I.
-#
-#all: readImg.o filters.o
-#
-#readImg.o: readImg.cpp filters.hpp
-#	$(CC) readImg.cpp  -g -o readImg.o
-#
-#filters.o: filters.hpp filters.cpp
-#	$(CC) filters.cpp -g -o filters.o
-#
-#.PHONY: clean
-#clean:
-#	rm -f *.o
-
-
 TARGET_EXEC ?= main.out
 
 BUILD_DIR ?= ./build
-CC=g++ -g -std=c++11
+#CC=g++ -g -std=c++11
+CC=g++ -pthread -std=c++11
 
 
 SRCS := $(shell find -name '*.cpp' )
