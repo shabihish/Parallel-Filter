@@ -182,9 +182,7 @@ void *threadsFunc(ThreadingArgs *args) {
     getPixlesFromBMP24(args);
 
     *args->image = applySmoothingFilter(*args->image, args->rows, args->cols);
-//    *args->image = applySepiaFilter(*args->image, args->rows, args->cols);
-//    *args->image = applyOverallMeanFilter(*args->image);
-//    *args->image = addCrossToImage(*args->image);
+    *args->image = applySepiaFilter(*args->image, args->rows, args->cols);
     return nullptr;
 }
 
@@ -234,6 +232,7 @@ int main(int argc, char *argv[]) {
     int rc = 0;
     ThreadingArgs args[numOfThreads];
 
+    long s = getTime();
     int chunkSize, start, rowSize;
     for (int i = 0; i < numOfThreads; i++) {
         start = headerSize + basicChunkSizes * i;
@@ -275,7 +274,12 @@ int main(int argc, char *argv[]) {
         image.insert(image.end(), beginning, end);
     }
 
+    image = applyOverallMeanFilter(image);
+    image = addCrossToImage(image);
+
     // write output file
     writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, image);
+
+    cout << getTime() - s << "us" << endl;
     return 0;
 }
