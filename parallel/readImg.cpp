@@ -121,8 +121,8 @@ void *getPixlesFromBMP24(ThreadingArgs *args) {
                         // go to the next position in the buffer
                 }
                 count++;
-                if (count - args->start == args->chunkSize)
-                    return nullptr;
+//                if (count - args->start == args->chunkSize)
+//                    return nullptr;
             }
         }
     }
@@ -181,8 +181,8 @@ void *threadsFunc(ThreadingArgs *args) {
 //    pthread_create(&thread, &attr, reinterpret_cast<void *(*)(void *)>(getPixlesFromBMP24), &args);
     getPixlesFromBMP24(args);
 
-//    args->image = applySmoothingFilter(args->image, args->rows, args->cols);
-    *args->image = applySepiaFilter(*args->image, args->rows, args->cols);
+    *args->image = applySmoothingFilter(*args->image, args->rows, args->cols);
+//    *args->image = applySepiaFilter(*args->image, args->rows, args->cols);
 //    *args->image = applyOverallMeanFilter(*args->image);
 //    *args->image = addCrossToImage(*args->image);
     return nullptr;
@@ -219,12 +219,12 @@ int main(int argc, char *argv[]) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    int numOfThreads = 2;
+    int numOfThreads = 5;
     pthread_t threads[numOfThreads];
 
-    int chunkSizes = (bufferSize - headerSize) / numOfThreads;
-    int rowSizes = chunkSizes / (rows * 3);
-    if (chunkSizes % (rows * 3) != 0) {
+    int basicChunkSizes = (bufferSize - headerSize) / numOfThreads;
+    int basicRowSizes = basicChunkSizes / (rows * 3);
+    if (basicChunkSizes % (rows * 3) != 0) {
         cout << "Invalid number of threads entered." << endl;
         exit(-1);
     }
@@ -233,10 +233,23 @@ int main(int argc, char *argv[]) {
 
     int rc = 0;
     ThreadingArgs args[numOfThreads];
-    for(int i=0;i<numOfThreads;i++){
-        args[i] = ThreadingArgs(headerSize + chunkSizes * i, chunkSizes, bufferSize, rowSizes, cols, fileBuffer, &images[i]);
+
+    int chunkSize, start, rowSize;
+    for (int i = 0; i < numOfThreads; i++) {
+        start = headerSize + basicChunkSizes * i;
+        rowSize = basicRowSizes;
+        if (i > 0) {
+            start -= cols * 3;
+            rowSize += 1;
+        }
+
+        if (i < numOfThreads - 1)
+            rowSize += 1;
+
+        args[i] = ThreadingArgs(start, basicChunkSizes, bufferSize, rowSize, cols, fileBuffer,
+                                &images[i]);
         rc = pthread_create(&threads[i], &attr, reinterpret_cast<void *(*)(void *)>(threadsFunc), &args[i]);
-        if (rc){
+        if (rc) {
             cout << "Error:unable to create thread," << rc << endl;
             exit(-1);
         }
@@ -252,7 +265,14 @@ int main(int argc, char *argv[]) {
             cout << "Error:unable to join," << rc << endl;
             exit(-1);
         }
-        image.insert(image.end(), images[i].begin(), images[i].end());
+
+        auto beginning = images[i].begin();
+        if (i > 0)
+            beginning += 1;
+        auto end = images[i].end();
+        if (i < numOfThreads - 1)
+            end -= 1;
+        image.insert(image.end(), beginning, end);
     }
 
     // write output file

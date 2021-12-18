@@ -71,7 +71,8 @@ vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image, int rows
     for (int i = 0; i < image.size(); i++) {
         for (int j = 0; j < image[i].size(); j++) {
             if (i == 0 || i == image.size() - 1 || j == 0 || j == image[i].size() - 1)
-                new_image[i][j].setToZero();
+//                new_image[i][j].setToZero();
+                continue;
             else
                 new_image[i][j] =
                         (image[i - 1][j - 1] + image[i - 1][j] + image[i - 1][j + 1] + image[i][j - 1] + image[i][j] +

@@ -80,9 +80,9 @@ vector<vector<Pixel>> getPixlesFromBMP24(int headerSize, int rows, int cols, cha
     int extra = cols % 4;
 
 //    Pixel **image = static_cast<Pixel **>(calloc(sizeof(Pixel *), rows));
-    vector<vector<Pixel>> image(rows);
+    vector<vector<Pixel>> image;
     for (int i = 0; i < rows; i++) {
-        image.emplace_back(vector<Pixel>(cols));
+        image.emplace_back(vector<Pixel>());
 //         rowPixels(cols);
         count += extra;
         for (int j = 0; j < cols; j++) {
@@ -174,15 +174,15 @@ int main(int argc, char *argv[]) {
     uint64_t t2 = getTime() - s2;
 
     uint64_t s3 = getTime();
-    image = applySepiaFilter(image);
+//    image = applySepiaFilter(image);
     uint64_t t3 = getTime() - s3;
 
     uint64_t s4 = getTime();
-    image = applyOverallMeanFilter(image);
+//    image = applyOverallMeanFilter(image);
     uint64_t t4 = getTime() - s4;
 
     uint64_t s5 = getTime();
-    image = addCrossToImage(image);
+//    image = addCrossToImage(image);
     uint64_t t5 = getTime() - s5;
 
     // write output file
