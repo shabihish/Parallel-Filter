@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <fstream>
 #include <vector>
+#include <sys/time.h>
 #include "filters.hpp"
 
 using std::cout;
@@ -38,6 +39,11 @@ typedef struct tagBITMAPINFOHEADER {
     DWORD biClrUsed;
     DWORD biClrImportant;
 } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
+
+//struct timespec {
+//    time_t   tv_sec;        /* seconds */
+//    long     tv_nsec;       /* nanoseconds */
+//} ts;
 
 int rows;
 int cols;
@@ -141,6 +147,13 @@ void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferS
     write.write(fileBuffer, bufferSize);
 }
 
+struct timeval tv;
+
+uint64_t getTime() {
+    gettimeofday(&tv, nullptr);
+    return tv.tv_usec + tv.tv_sec * (uint64_t) 1000000;
+}
+
 int main(int argc, char *argv[]) {
     char *fileBuffer;
     int bufferSize, headerSize;
@@ -151,14 +164,41 @@ int main(int argc, char *argv[]) {
     }
 
     // read input file
+    uint64_t s1 = getTime();
     vector<vector<Pixel>> image = getPixlesFromBMP24(headerSize, rows, cols, fileBuffer);
+    uint64_t t1 = getTime() - s1;
 
     // apply filters
+    uint64_t s2 = getTime();
     image = applySmoothingFilter(image);
+    uint64_t t2 = getTime() - s2;
+
+    uint64_t s3 = getTime();
     image = applySepiaFilter(image);
+    uint64_t t3 = getTime() - s3;
+
+    uint64_t s4 = getTime();
+    image = applyOverallMeanFilter(image);
+    uint64_t t4 = getTime() - s4;
+
+    uint64_t s5 = getTime();
+    image = addCrossToImage(image);
+    uint64_t t5 = getTime() - s5;
 
     // write output file
-    writeOutBmp24(fileBuffer, "new.bmp", bufferSize, headerSize, image);
+    uint64_t s6 = getTime();
+    writeOutBmp24(fileBuffer, "new1.bmp", bufferSize, headerSize, image);
+    uint64_t t6 = getTime() - s6;
+
+    double total = t1 + t2 + t3 + t4 + t5 + t6;
+    cout << "t1: " << t1 / total << endl;
+    cout << "t2: " << t2 / total << endl;
+    cout << "t3: " << t3 / total << endl;
+    cout << "t4: " << t4 / total << endl;
+    cout << "t5: " << t5 / total << endl;
+    cout << "t6: " << t6 / total << endl;
+
+    cout << "\ntotal: " << total << "us" << endl;
 
     return 0;
 }

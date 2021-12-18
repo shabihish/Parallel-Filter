@@ -31,6 +31,14 @@ Pixel &Pixel::operator=(const Pixel &pixel) {
     return *this;
 }
 
+Pixel &Pixel::operator=(const int b) {
+    this->r = b;
+    this->g = b;
+    this->b = b;
+
+    return *this;
+}
+
 Pixel Pixel::operator+(const Pixel &pixel) {
     Pixel p;
     p.r = this->r + pixel.r;
@@ -45,6 +53,15 @@ Pixel Pixel::operator/(const double dividend) {
     p.r = (int) (this->r / dividend);
     p.g = (int) (this->g / dividend);
     p.b = (int) (this->b / dividend);
+
+    return p;
+};
+
+Pixel Pixel::operator*(const double b) {
+    Pixel p;
+    p.r = (int) (this->r * b);
+    p.g = (int) (this->g * b);
+    p.b = (int) (this->b * b);
 
     return p;
 };
@@ -65,11 +82,50 @@ vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image) {
 }
 
 vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image) {
-    vector<vector<Pixel>> new_image = image;
-    for (int i = 0; i < image.size(); i++) {
-        for (int j = 0; j < image[i].size(); j++) {
-            new_image[i][j].applySepia();
+    for (auto &i: image) {
+        for (auto &j: i) {
+            j.applySepia();
         }
     }
-    return new_image;
+    return image;
+}
+
+vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image) {
+    Pixel p;
+    p.setToZero();
+    for (auto &i: image) {
+        for (auto &j: i) {
+            p = p + j;
+        }
+    }
+    p = p / (double) (image.size() * image[0].size());
+
+    for (auto &i: image) {
+        for (auto &j: i) {
+            j = j * 0.4 + p * 0.6;
+        }
+    }
+    return image;
+}
+
+vector<vector<Pixel>> addCrossToImage(vector<vector<Pixel>> image) {
+    int i = 0;
+    int end = min(image.size(), image[0].size());
+    int rows = image.size();
+    int cols = image[0].size();
+
+    for (i = 0; i < end; i++) {
+        image[i][i] = 255;
+        if (i + 1 < rows)
+            image[i + 1][i] = 255;
+        if (i + 1 < cols)
+            image[i][i + 1] = 255;
+
+        image[end - i - 1][i] = 255;
+        if (end - i - 2 >= 0)
+            image[end - i - 2][i] = 255;
+        if (i + 1 < cols)
+            image[end - i - 1][i + 1] = 255;
+    }
+    return image;
 }

@@ -19,12 +19,21 @@ public:
 
     Pixel &operator=(const Pixel &pixel);
 
+    Pixel &operator=(const int b);
+
     Pixel operator+(const Pixel &pixel);
 
     Pixel operator/(const double dividend);
+
+    Pixel operator*(const double b);
 };
 
 vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image);
+
 vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image);
+
+vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image);
+
+vector<vector<Pixel>> addCrossToImage(vector<vector<Pixel>> image);
 
 #endif
