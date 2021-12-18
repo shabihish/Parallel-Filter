@@ -28,9 +28,9 @@ public:
     Pixel operator*(const double b);
 };
 
-vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image);
+vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image, int rows, int cols);
 
-vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image);
+vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image, int rows, int cols);
 
 vector<vector<Pixel>> applyOverallMeanFilter(vector<vector<Pixel>> image);
 

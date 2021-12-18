@@ -66,7 +66,7 @@ Pixel Pixel::operator*(const double b) {
     return p;
 };
 
-vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image) {
+vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image, int rows, int cols) {
     vector<vector<Pixel>> new_image = image;
     for (int i = 0; i < image.size(); i++) {
         for (int j = 0; j < image[i].size(); j++) {
@@ -81,7 +81,7 @@ vector<vector<Pixel>> applySmoothingFilter(vector<vector<Pixel>> image) {
     return new_image;
 }
 
-vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image) {
+vector<vector<Pixel>> applySepiaFilter(vector<vector<Pixel>> image, int rows, int cols) {
     for (auto &i: image) {
         for (auto &j: i) {
             j.applySepia();

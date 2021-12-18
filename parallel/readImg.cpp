@@ -72,39 +72,51 @@ bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, 
     }
 }
 
-typedef struct {
+class ThreadingArgs {
+public:
     int start;
     int chunkSize;
     int bufferSize;
     int rows;
     int cols;
     char *buffer;
-    vector<vector<Pixel>> &image;
-} threading_args;
+    vector<vector<Pixel>> *image;
 
-void *getPixlesFromBMP24(threading_args *args) {
+    ThreadingArgs(int start = 0, int chunkSize = 0, int bufferSize = 0, int rows = 0, int cols = 0,
+                  char *buffer = nullptr, vector<vector<Pixel>> *image = nullptr) {
+        this->start = start;
+        this->chunkSize = chunkSize;
+        this->bufferSize = bufferSize;
+        this->rows = rows;
+        this->cols = cols;
+        this->buffer = buffer;
+        this->image = image;
+    }
+};
+
+void *getPixlesFromBMP24(ThreadingArgs *args) {
     int count = args->start;
     int extra = args->cols % 4;
 
-    args->image = vector<vector<Pixel>>(args->rows);
+//    *args->image = vector<vector<Pixel>>(args->rows);
     for (int i = 0; i < args->rows; i++) {
-        args->image.emplace_back(vector<Pixel>(args->cols));
+        args->image->emplace_back(vector<Pixel>());
         count += extra;
         for (int j = 0; j < args->cols; j++) {
-            args->image[i].emplace_back(Pixel());
+            (*args->image)[i].emplace_back(Pixel());
             for (int k = 0; k < 3; k++) {
                 switch (k) {
                     case 0:
                         // buffer[bufferSize - count] is the red value
-                        args->image[i][j].b = (unsigned char) args->buffer[count];
+                        (*args->image)[i][j].b = (unsigned char) args->buffer[count];
                         break;
                     case 1:
                         // buffer[bufferSize - count] is the green value
-                        args->image[i][j].g = (unsigned char) args->buffer[count];
+                        (*args->image)[i][j].g = (unsigned char) args->buffer[count];
                         break;
                     case 2:
                         // buffer[bufferSize - count] is the blue value
-                        args->image[i][j].r = (unsigned char) args->buffer[count];
+                        (*args->image)[i][j].r = (unsigned char) args->buffer[count];
                         break;
                         // go to the next position in the buffer
                 }
@@ -161,7 +173,23 @@ uint64_t getTime() {
     return tv.tv_usec + tv.tv_sec * (uint64_t) 1000000;
 }
 
-pthread_t runThread(threading_args &args, pthread_attr_t &attr) {
+
+void *threadsFunc(ThreadingArgs *args) {
+    // read input file
+//    pthread_t thread;
+//    pthread_create(nullptr, nullptr, nullptr, nullptr);
+//    pthread_create(&thread, &attr, reinterpret_cast<void *(*)(void *)>(getPixlesFromBMP24), &args);
+    getPixlesFromBMP24(args);
+
+//    args->image = applySmoothingFilter(args->image, args->rows, args->cols);
+    *args->image = applySepiaFilter(*args->image, args->rows, args->cols);
+//    *args->image = applyOverallMeanFilter(*args->image);
+//    *args->image = addCrossToImage(*args->image);
+    return nullptr;
+}
+
+
+pthread_t runThread(ThreadingArgs &args, pthread_attr_t &attr) {
     // read input file
     pthread_t thread;
 //    pthread_create(nullptr, nullptr, nullptr, nullptr);
@@ -171,8 +199,8 @@ pthread_t runThread(threading_args &args, pthread_attr_t &attr) {
     void *status;
     pthread_join(thread, &status);
 
-    args.image = applySmoothingFilter(args.image);
-    args.image = applySepiaFilter(args.image);
+//    args.image = applySmoothingFilter(args.image, args.rows, args.cols);
+//    args.image = applySepiaFilter(args.image, args.rows, args.cols);
 //    args.image = applyOverallMeanFilter(args.image);
 //    args.image = addCrossToImage(args.image);
     return thread;
@@ -191,13 +219,43 @@ int main(int argc, char *argv[]) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+    int numOfThreads = 2;
+    pthread_t threads[numOfThreads];
+
+    int chunkSizes = (bufferSize - headerSize) / numOfThreads;
+    int rowSizes = chunkSizes / (rows * 3);
+    if (chunkSizes % (rows * 3) != 0) {
+        cout << "Invalid number of threads entered." << endl;
+        exit(-1);
+    }
+
+    vector<vector<Pixel>> images[numOfThreads];
+
+    int rc = 0;
+    ThreadingArgs args[numOfThreads];
+    for(int i=0;i<numOfThreads;i++){
+        args[i] = ThreadingArgs(headerSize + chunkSizes * i, chunkSizes, bufferSize, rowSizes, cols, fileBuffer, &images[i]);
+        rc = pthread_create(&threads[i], &attr, reinterpret_cast<void *(*)(void *)>(threadsFunc), &args[i]);
+        if (rc){
+            cout << "Error:unable to create thread," << rc << endl;
+            exit(-1);
+        }
+    }
+
     vector<vector<Pixel>> image;
-    threading_args args{headerSize, bufferSize - headerSize, bufferSize, rows, cols, fileBuffer, image};
-    pthread_t thread = runThread(args, attr);
 
-
+    void *status;
+    pthread_attr_destroy(&attr);
+    for (int i = 0; i < numOfThreads; i++) {
+        rc = pthread_join(threads[i], &status);
+        if (rc) {
+            cout << "Error:unable to join," << rc << endl;
+            exit(-1);
+        }
+        image.insert(image.end(), images[i].begin(), images[i].end());
+    }
 
     // write output file
-    writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, args.image);
+    writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, image);
     return 0;
 }
