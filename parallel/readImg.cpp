@@ -224,79 +224,89 @@ int main(int argc, char *argv[]) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    int numOfThreads = 5;
-    pthread_t threads[numOfThreads];
+    int numOfRuns = 5;
 
-    int basicChunkSizes = (bufferSize - headerSize) / numOfThreads;
-    int basicRowSizes = basicChunkSizes / (rows * 3);
-    if (basicChunkSizes % (rows * 3) != 0) {
-        cout << "Invalid number of threads entered." << endl;
-        exit(-1);
+    for (int numOfThreads = 1; numOfThreads < 1000; numOfThreads++) {
+        long runtime = 0;
+        for (int run = 1; run < numOfRuns; run++) {
+            int basicChunkSizes = (bufferSize - headerSize) / numOfThreads;
+            if (basicChunkSizes % (rows * 3) != 0)
+                continue;
+//        int numOfThreads = 5;
+            pthread_t threads[numOfThreads];
+
+            int basicRowSizes = basicChunkSizes / (rows * 3);
+            if (basicChunkSizes % (rows * 3) != 0) {
+                cout << "Invalid number of threads entered." << endl;
+                exit(-1);
+            }
+
+            vector<vector<Pixel>> images[numOfThreads];
+            Pixel sums[numOfThreads];
+
+            int rc = 0;
+            ThreadingArgs args[numOfThreads];
+
+            long s = getTime();
+            int chunkSize, start, rowSize;
+            bool row0Added, row1Added;
+            for (int i = 0; i < numOfThreads; i++) {
+                row0Added = false;
+                row1Added = false;
+                start = headerSize + basicChunkSizes * i;
+                rowSize = basicRowSizes;
+                if (i > 0) {
+                    row0Added = true;
+                    start -= cols * 3;
+                    rowSize += 1;
+                }
+
+                if (i < numOfThreads - 1) {
+                    row1Added = true;
+                    rowSize += 1;
+                }
+
+                args[i] = ThreadingArgs(start, basicChunkSizes, bufferSize, rowSize, cols, fileBuffer,
+                                        &images[i], &sums[i], row0Added, row1Added);
+                rc = pthread_create(&threads[i], &attr, reinterpret_cast<void *(*)(void *)>(threadsFunc), &args[i]);
+                if (rc) {
+                    cout << "Error:unable to create thread," << rc << endl;
+                    exit(-1);
+                }
+            }
+
+            vector<vector<Pixel>> image;
+
+            Pixel sum;
+
+            void *status;
+            pthread_attr_destroy(&attr);
+            for (int i = 0; i < numOfThreads; i++) {
+                rc = pthread_join(threads[i], &status);
+                if (rc) {
+                    cout << "Error:unable to join," << rc << endl;
+                    exit(-1);
+                }
+
+                auto beginning = images[i].begin();
+                if (i > 0)
+                    beginning += 1;
+                auto end = images[i].end();
+                if (i < numOfThreads - 1)
+                    end -= 1;
+                image.insert(image.end(), beginning, end);
+                sum += sums[i];
+            }
+
+            image = applyOverallMeanFilter(image, sum / (rows * cols));
+            image = addCrossToImage(image);
+
+            // write output file
+            writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, image);
+            runtime += (getTime() - s) / 5;
+            if (run == numOfRuns - 1)
+                cout << "numOfThreads: " << numOfThreads << " mean time: " << runtime << "us" << endl;
+        }
     }
-
-    vector<vector<Pixel>> images[numOfThreads];
-    Pixel sums[numOfThreads];
-
-    int rc = 0;
-    ThreadingArgs args[numOfThreads];
-
-    long s = getTime();
-    int chunkSize, start, rowSize;
-    bool row0Added, row1Added;
-    for (int i = 0; i < numOfThreads; i++) {
-        row0Added = false;
-        row1Added = false;
-        start = headerSize + basicChunkSizes * i;
-        rowSize = basicRowSizes;
-        if (i > 0) {
-            row0Added = true;
-            start -= cols * 3;
-            rowSize += 1;
-        }
-
-        if (i < numOfThreads - 1) {
-            row1Added = true;
-            rowSize += 1;
-        }
-
-        args[i] = ThreadingArgs(start, basicChunkSizes, bufferSize, rowSize, cols, fileBuffer,
-                                &images[i], &sums[i], row0Added, row1Added);
-        rc = pthread_create(&threads[i], &attr, reinterpret_cast<void *(*)(void *)>(threadsFunc), &args[i]);
-        if (rc) {
-            cout << "Error:unable to create thread," << rc << endl;
-            exit(-1);
-        }
-    }
-
-    vector<vector<Pixel>> image;
-
-    Pixel sum;
-
-    void *status;
-    pthread_attr_destroy(&attr);
-    for (int i = 0; i < numOfThreads; i++) {
-        rc = pthread_join(threads[i], &status);
-        if (rc) {
-            cout << "Error:unable to join," << rc << endl;
-            exit(-1);
-        }
-
-        auto beginning = images[i].begin();
-        if (i > 0)
-            beginning += 1;
-        auto end = images[i].end();
-        if (i < numOfThreads - 1)
-            end -= 1;
-        image.insert(image.end(), beginning, end);
-        sum += sums[i];
-    }
-
-    image = applyOverallMeanFilter(image, sum / (rows * cols));
-    image = addCrossToImage(image);
-
-    // write output file
-    writeOutBmp24(fileBuffer, "new2.bmp", bufferSize, headerSize, image);
-
-    cout << getTime() - s << "us" << endl;
     return 0;
 }
